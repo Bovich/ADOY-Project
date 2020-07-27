@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using VirusTotalNet;
@@ -8,7 +10,7 @@ using VirusTotalNet.Objects;
 using VirusTotalNet.ResponseCodes;
 using VirusTotalNet.Results;
 
-namespace WebApplication1.Controllers
+namespace VirusTotalNet
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -30,12 +32,13 @@ namespace WebApplication1.Controllers
             //If the url has been scanned before, the results are embedded inside the report.
             if (hasUrlBeenScannedBefore)
             {
-                return ("Scan ID: " + urlReport.ScanId + "Message: " + urlReport.VerboseMsg);
+                return ("Number of scans: " +urlReport.Total +"      "+ "Positive: " + urlReport.Positives);
             }
             else
             {
                 UrlScanResult urlResult = await virusTotal.ScanUrlAsync(scanUrl);
-                return ("Scan ID: " + urlResult.ScanId + "Message: " + urlResult.VerboseMsg);
+                UrlReport newUrlReport = await virusTotal.GetUrlReportAsync(scanUrl);
+                return ("Url is being scanned, come back later for the result.");
             }
         }
 
@@ -50,12 +53,12 @@ namespace WebApplication1.Controllers
             //If the url has been scanned before, the results are embedded inside the report.
             if (hasIpBeenScannedBefore)
             {
-                return ("Scan ID: " + ipReport + "Message: " + ipReport.VerboseMsg);
+                return ("Scan ID:       " + ipReport.DetectedUrls.Count + "     Message:    " + ipReport.VerboseMsg);
             }
             else
             {
-                // UrlScanResult urlResult = await virusTotal.ScanUrlAsync(scanUrl);
-                // return ("Scan ID: " + urlReport.ScanId + "Message: " + urlReport.VerboseMsg);
+                UrlScanResult ipResult = await virusTotal.ScanUrlAsync(scanIp);
+                return ("IP Address is being scanned, come back later for the result." + "Scan ID: " + ipReport.DetectedUrls.Count + "Message: " + ipReport.VerboseMsg);
             }
 
             return "success";
@@ -63,9 +66,23 @@ namespace WebApplication1.Controllers
 
         // POST api/values/file
         [HttpPost("file")]
-        public ActionResult<string> VirusTotalCheckFile([FromBody] FileResult value)
+        public async Task<ActionResult<string>> VirusTotalCheckFileAsync([FromBody]FileInfo value)
         {
-            return "Sup?";
+            //byte[] newvalue = Encoding.ASCII.GetBytes(value);
+            FileReport fileReport = await virusTotal.GetFileReportAsync(value);
+
+            bool hasFileBeenScannedBefore = fileReport.ResponseCode == FileReportResponseCode.Present;
+
+            //If the file has been scanned before, the results are embedded inside the report.
+            if (hasFileBeenScannedBefore)
+            {
+                return ("Number of scans: " + fileReport.Total + "      " + "Positive: " + fileReport.Positives);
+            }
+            else
+            {
+                //UrlScanResult fileResult = await virusTotal.ScanFileAsync(value);
+                return ("File is being scanned, come back later for the result." + "Scan ID: " + fileReport.ScanId + "Message: " + fileReport.VerboseMsg);
+            }
         }
 
         private static void PrintScan(UrlScanResult scanResult)
